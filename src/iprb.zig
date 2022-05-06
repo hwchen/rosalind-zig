@@ -1,4 +1,4 @@
-// Count dna in a string
+// Mendelian Inheritance Probabilities
 
 const std = @import("std");
 const data = @embedFile("../input/iprb.txt");
