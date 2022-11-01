@@ -1,4 +1,7 @@
 // fibonacci
+//
+// k is litter size
+// n is generations
 
 const std = @import("std");
 const data = @embedFile("../input/fib.txt");
