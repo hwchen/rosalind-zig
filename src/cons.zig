@@ -11,7 +11,7 @@ pub fn main() anyerror!void {
         @setEvalBranchQuota(100000);
         var fasta_collection_prime = FastaCollection.from_str(data);
         const fasta_prime = (try fasta_collection_prime.next()) orelse return error.NoFasta;
-        const seq_len = fasta_prime.sequence.count();
+        const seq_len = fasta_prime.seq_len();
 
         break :blk Consensus(seq_len){};
     };
@@ -19,8 +19,9 @@ pub fn main() anyerror!void {
     var fasta_collection = FastaCollection.from_str(data);
     while (try fasta_collection.next()) |*fasta| {
         std.debug.print("processing: {s}\n", .{fasta.label});
+        var seq = fasta.sequence();
         var seq_idx: usize = 0;
-        while (fasta.sequence.next()) |n| {
+        while (seq.next()) |n| {
             switch (n) {
                 'A' => consensus.a[seq_idx] += 1,
                 'C' => consensus.c[seq_idx] += 1,

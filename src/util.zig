@@ -64,16 +64,34 @@ pub const Fasta = struct {
         };
     }
 
+    pub fn seq_len(self: Self) u64 {
+        var seq = Sequence{
+            .slice = self.seq_slice,
+            .idx = 0,
+        };
+        var total: u64 = 0;
+        while (seq.next()) |_| {
+            total += 1;
+        }
+        return total;
+    }
+
+    // Iterators for sequences
+    const ApprovedChars = [_]u8{ 'A', 'C', 'G', 'T' };
+
+    // will panic if self.idx out of bounds
+    fn is_approved_char(c: []const u8) bool {
+        return containsAtLeast(u8, &ApprovedChars, 1, c);
+    }
+
     pub const Sequence = struct {
         slice: []const u8,
         idx: usize = 0,
 
-        const ApprovedChars = [_]u8{ 'A', 'C', 'G', 'T' };
-
         // skips over whitespace
         pub fn next(self: *Sequence) ?u8 {
             // fast-forward through whitespace before checking to return null
-            while (self.idx < self.slice.len and !self.curr_is_approved_char()) {
+            while (self.idx < self.slice.len and !Fasta.is_approved_char(self.slice[self.idx .. self.idx + 1])) {
                 self.idx += 1;
             }
 
@@ -84,23 +102,6 @@ pub const Fasta = struct {
             const res = self.slice[self.idx];
             self.idx += 1;
             return res;
-        }
-
-        // will panic if self.idx out of bounds
-        fn curr_is_approved_char(self: Sequence) bool {
-            return containsAtLeast(u8, &ApprovedChars, 1, self.slice[self.idx .. self.idx + 1]);
-        }
-
-        pub fn count(self: Sequence) u64 {
-            var this = Sequence{
-                .slice = self.slice,
-                .idx = 0,
-            };
-            var total: u64 = 0;
-            while (this.next()) |_| {
-                total += 1;
-            }
-            return total;
         }
     };
 };
