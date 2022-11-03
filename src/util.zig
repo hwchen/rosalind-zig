@@ -64,6 +64,13 @@ pub const Fasta = struct {
         };
     }
 
+    pub fn reverse_sequence(self: Self) ReverseSequence {
+        return ReverseSequence{
+            .slice = self.seq_slice,
+            .idx = self.seq_slice.len,
+        };
+    }
+
     pub fn seq_len(self: Self) u64 {
         var seq = Sequence{
             .slice = self.seq_slice,
@@ -104,6 +111,28 @@ pub const Fasta = struct {
             return res;
         }
     };
+
+    pub const ReverseSequence = struct {
+        slice: []const u8,
+        idx: usize,
+
+        // skips over whitespace
+        pub fn next(self: *ReverseSequence) ?u8 {
+            if (self.idx == 0) {
+                return null;
+            }
+
+            self.idx -= 1;
+
+            // fast-forward through whitespace before checking to return null
+            while (self.idx > 0 and !Fasta.is_approved_char(self.slice[self.idx .. self.idx + 1])) {
+                self.idx -= 1;
+            }
+
+            const res = self.slice[self.idx];
+            return res;
+        }
+    };
 };
 
 test "parse empty" {
@@ -138,4 +167,33 @@ test "parse one fasta; iterate sequence w whitespace" {
     try std.testing.expectEqual(seq.next().?, 'A');
     try std.testing.expectEqual(seq.next().?, 'T');
     try std.testing.expectEqual(seq.next(), null);
+}
+
+test "parse one fasta in reverse; iterate sequence w whitespace" {
+    // Ending w/ whitespace
+    {
+        const input = ">Rosalind_1\nA\nT\n";
+        const output = try parse_one_fasta(input);
+        try std.testing.expectEqualStrings(output.label, "Rosalind_1");
+        try std.testing.expectEqualStrings(output.seq_slice, "A\nT\n");
+
+        var rev_seq = output.reverse_sequence();
+        try std.testing.expectEqual(rev_seq.next().?, 'T');
+        try std.testing.expectEqual(rev_seq.next().?, 'A');
+        try std.testing.expectEqual(rev_seq.next(), null);
+    }
+
+    // Ending w/ nucleotide
+    {
+        const input = ">Rosalind_1\nA\nT\nG";
+        const output = try parse_one_fasta(input);
+        try std.testing.expectEqualStrings(output.label, "Rosalind_1");
+        try std.testing.expectEqualStrings(output.seq_slice, "A\nT\nG");
+
+        var rev_seq = output.reverse_sequence();
+        try std.testing.expectEqual(rev_seq.next().?, 'G');
+        try std.testing.expectEqual(rev_seq.next().?, 'T');
+        try std.testing.expectEqual(rev_seq.next().?, 'A');
+        try std.testing.expectEqual(rev_seq.next(), null);
+    }
 }
