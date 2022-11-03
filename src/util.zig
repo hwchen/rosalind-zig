@@ -47,54 +47,62 @@ pub fn parse_one_fasta(input: []const u8) !Fasta {
     const label_end = mem.indexOf(u8, input, "\n") orelse return error.NoSequenceOnlyLabel;
     return Fasta{
         .label = input[1..label_end],
-        .sequence = Sequence{ .slice = input[label_end + 1 ..] },
+        .seq_slice = input[label_end + 1 ..],
     };
 }
 
 // refers to slice of source, so must not outlive the source
 pub const Fasta = struct {
     label: []const u8,
-    sequence: Sequence,
-};
+    seq_slice: []const u8,
 
-pub const Sequence = struct {
-    slice: []const u8,
-    idx: usize = 0,
+    const Self = @This();
 
-    const ApprovedChars = [_]u8{ 'A', 'C', 'G', 'T' };
-
-    // skips over whitespace
-    pub fn next(self: *Sequence) ?u8 {
-        // fast-forward through whitespace before checking to return null
-        while (self.idx < self.slice.len and !self.curr_is_approved_char()) {
-            self.idx += 1;
-        }
-
-        if (self.idx >= self.slice.len) {
-            return null;
-        }
-
-        const res = self.slice[self.idx];
-        self.idx += 1;
-        return res;
-    }
-
-    // will panic if self.idx out of bounds
-    fn curr_is_approved_char(self: Sequence) bool {
-        return containsAtLeast(u8, &ApprovedChars, 1, self.slice[self.idx .. self.idx + 1]);
-    }
-
-    pub fn count(self: Sequence) u64 {
-        var this = Sequence{
-            .slice = self.slice,
-            .idx = 0,
+    pub fn sequence(self: Self) Sequence {
+        return Sequence{
+            .slice = self.seq_slice,
         };
-        var total: u64 = 0;
-        while (this.next()) |_| {
-            total += 1;
-        }
-        return total;
     }
+
+    pub const Sequence = struct {
+        slice: []const u8,
+        idx: usize = 0,
+
+        const ApprovedChars = [_]u8{ 'A', 'C', 'G', 'T' };
+
+        // skips over whitespace
+        pub fn next(self: *Sequence) ?u8 {
+            // fast-forward through whitespace before checking to return null
+            while (self.idx < self.slice.len and !self.curr_is_approved_char()) {
+                self.idx += 1;
+            }
+
+            if (self.idx >= self.slice.len) {
+                return null;
+            }
+
+            const res = self.slice[self.idx];
+            self.idx += 1;
+            return res;
+        }
+
+        // will panic if self.idx out of bounds
+        fn curr_is_approved_char(self: Sequence) bool {
+            return containsAtLeast(u8, &ApprovedChars, 1, self.slice[self.idx .. self.idx + 1]);
+        }
+
+        pub fn count(self: Sequence) u64 {
+            var this = Sequence{
+                .slice = self.slice,
+                .idx = 0,
+            };
+            var total: u64 = 0;
+            while (this.next()) |_| {
+                total += 1;
+            }
+            return total;
+        }
+    };
 };
 
 test "parse empty" {
@@ -116,16 +124,16 @@ test "parse one fasta" {
     const input = ">Rosalind_1\nATCCAGCT";
     const output = try parse_one_fasta(input);
     try std.testing.expectEqualStrings("Rosalind_1", output.label);
-    try std.testing.expectEqualStrings("ATCCAGCT", output.sequence.slice);
+    try std.testing.expectEqualStrings("ATCCAGCT", output.seq_slice);
 }
 
 test "parse one fasta; iterate sequence w whitespace" {
     const input = ">Rosalind_1\nA\nT\n";
     const output = try parse_one_fasta(input);
     try std.testing.expectEqualStrings(output.label, "Rosalind_1");
-    try std.testing.expectEqualStrings(output.sequence.slice, "A\nT\n");
+    try std.testing.expectEqualStrings(output.seq_slice, "A\nT\n");
 
-    var seq = output.sequence;
+    var seq = output.sequence();
     try std.testing.expectEqual(seq.next().?, 'A');
     try std.testing.expectEqual(seq.next().?, 'T');
     try std.testing.expectEqual(seq.next(), null);
