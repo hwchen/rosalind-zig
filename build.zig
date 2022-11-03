@@ -16,7 +16,20 @@ pub fn build(b: *std.build.Builder) void {
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
     const mode = b.standardReleaseOptions();
 
-    const problems = [_][]const u8{ "ini", "dna", "rna", "revc", "fib", "gc", "iprb", "prot", "subs", "cons", "fibd" };
+    const problems = [_][]const u8{
+        "ini",
+        "dna",
+        "rna",
+        "revc",
+        "fib",
+        "gc",
+        "iprb",
+        "prot",
+        "subs",
+        "cons",
+        "fibd",
+        "grph",
+    };
 
     inline for (problems) |problem| {
         const exe = b.addExecutable(problem, "src/" ++ problem ++ ".zig");
