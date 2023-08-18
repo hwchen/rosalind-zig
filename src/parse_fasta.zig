@@ -1,42 +1,46 @@
 const std = @import("std");
 const mem = std.mem;
+const Allocator = mem.Allocator;
 const containsAtLeast = std.mem.containsAtLeast;
+const ArrayList = std.ArrayList;
 const assert = std.debug.assert;
 
-pub const FastaCollection = struct {
-    slice: []const u8,
-    idx: usize = 0,
+pub const Nuc = enum(u8) {
+    A = 0b0001,
+    T = 0b0010,
+    C = 0b0100,
+    G = 0b1000,
+};
 
-    pub const Self = FastaCollection;
+// caller frees
+pub fn parseFastaCollectionDna(input: []const u8, alloc: Allocator) ![]FastaDna {
+    var collection = ArrayList.init(FastaDna, alloc);
 
-    pub fn from_str(input: []const u8) Self {
-        return Self{
-            .slice = input,
-            .idx = mem.indexOf(u8, input, ">") orelse 0,
-        };
+    var i = 0;
+    var input_tail = input;
+
+    while (true) {
+        const fasta_res = try parseOneFastaDna(input_tail);
+        try collection.append(fasta_res.fasta);
+
+        i += fasta_res.bytes_read;
+        if (i >= input_tail.len) {
+            break;
+        }
+        input_tail = input_tail[i..];
     }
 
-    pub fn next(self: *Self) !?Fasta {
-        if (self.idx >= self.slice.len) {
-            return null;
-        }
-        // this check not necessary if we do streaming state machine
-        // but it enables shifting frame of reference w/ idx + 1 below
-        if (self.slice.len - self.idx <= 1) {
-            return error.IncompleteInput;
-        }
+    return collection.toOwnedSlice();
+}
 
-        // shift frame of reference for searching for end, since we want to search for the second '>' as the end.
-        const end = if (mem.indexOf(u8, self.slice[self.idx + 1 ..], ">")) |i| self.idx + i + 1 else self.slice.len;
-        const fasta_slice = self.slice[self.idx..end];
-        self.idx = end;
-        return parseOneFasta(fasta_slice) catch |err| err;
-    }
+pub const FastaDna = struct {
+    label: []u8,
+    seq: []Nuc,
 };
 
 // Input: one fasta record
-// Output: the Sequence of that record, as an iterator
-pub fn parseOneFasta(input: []const u8) !Fasta {
+// Output: label and sequence, caller must free.
+pub fn parseOneFastaDna(input: []const u8, alloc: Allocator) !struct { fasta: FastaDna, bytes_read: u64 } {
     if (input.len <= 1) {
         return error.IncompleteInput;
     }
@@ -45,155 +49,82 @@ pub fn parseOneFasta(input: []const u8) !Fasta {
     }
 
     const label_end = mem.indexOf(u8, input, "\n") orelse return error.NoSequenceOnlyLabel;
-    return Fasta{
-        .label = input[1..label_end],
-        .seq_slice = input[label_end + 1 ..],
+    const label = try alloc.alloc(u8, label_end - 1);
+    @memcpy(label, input[1..label_end]);
+
+    var seq = ArrayList(Nuc).init(alloc);
+    var seq_bytes_read: u64 = 0;
+    for (input[label_end + 1 ..]) |c| {
+        switch (c) {
+            'A' => try seq.append(.A),
+            'T' => try seq.append(.T),
+            'C' => try seq.append(.C),
+            'G' => try seq.append(.G),
+            '>' => break,
+            else => {},
+        }
+        seq_bytes_read += 1;
+    }
+    return .{
+        .fasta = FastaDna{
+            .label = label,
+            .seq = try seq.toOwnedSlice(),
+        },
+        .bytes_read = label_end + seq_bytes_read + 1,
     };
 }
 
-// refers to slice of source, so must not outlive the source
-pub const Fasta = struct {
-    label: []const u8,
-    seq_slice: []const u8,
-
-    const Self = @This();
-
-    pub fn sequence(self: Self) Sequence {
-        return Sequence{
-            .slice = self.seq_slice,
-        };
-    }
-
-    pub fn reverse_sequence(self: Self) ReverseSequence {
-        return ReverseSequence{
-            .slice = self.seq_slice,
-            .idx = self.seq_slice.len,
-        };
-    }
-
-    pub fn seq_len(self: Self) u64 {
-        var seq = Sequence{
-            .slice = self.seq_slice,
-            .idx = 0,
-        };
-        var total: u64 = 0;
-        while (seq.next()) |_| {
-            total += 1;
-        }
-        return total;
-    }
-
-    // Iterators for sequences
-    const ApprovedChars = [_]u8{ 'A', 'C', 'G', 'T' };
-
-    // will panic if self.idx out of bounds
-    fn is_approved_char(c: []const u8) bool {
-        return containsAtLeast(u8, &ApprovedChars, 1, c);
-    }
-
-    pub const Sequence = struct {
-        slice: []const u8,
-        idx: usize = 0,
-
-        // skips over whitespace
-        pub fn next(self: *Sequence) ?u8 {
-            // fast-forward through whitespace before checking to return null
-            while (self.idx < self.slice.len and !Fasta.is_approved_char(self.slice[self.idx .. self.idx + 1])) {
-                self.idx += 1;
-            }
-
-            if (self.idx >= self.slice.len) {
-                return null;
-            }
-
-            const res = self.slice[self.idx];
-            self.idx += 1;
-            return res;
-        }
-    };
-
-    pub const ReverseSequence = struct {
-        slice: []const u8,
-        idx: usize,
-
-        // skips over whitespace
-        pub fn next(self: *ReverseSequence) ?u8 {
-            if (self.idx == 0) {
-                return null;
-            }
-
-            self.idx -= 1;
-
-            // fast-forward through whitespace before checking to return null
-            while (self.idx > 0 and !Fasta.is_approved_char(self.slice[self.idx .. self.idx + 1])) {
-                self.idx -= 1;
-            }
-
-            const res = self.slice[self.idx];
-            return res;
-        }
-    };
-};
-
 test "parse empty" {
+    const alloc = std.testing.allocator;
     const input = "";
-    try std.testing.expectError(error.IncompleteInput, parseOneFasta(input));
+    try std.testing.expectError(error.IncompleteInput, parseOneFastaDna(input, alloc));
 }
 
 test "parse too short" {
+    const alloc = std.testing.allocator;
     const input = ">";
-    try std.testing.expectError(error.IncompleteInput, parseOneFasta(input));
+    try std.testing.expectError(error.IncompleteInput, parseOneFastaDna(input, alloc));
 }
 
 test "parse wrong initial character" {
+    const alloc = std.testing.allocator;
     const input = "<test fasta\nA";
-    try std.testing.expectError(error.IncorrectInitialCharacter, parseOneFasta(input));
+    try std.testing.expectError(error.IncorrectInitialCharacter, parseOneFastaDna(input, alloc));
 }
 
 test "parse one fasta" {
-    const input = ">Rosalind_1\nATCCAGCT";
-    const output = try parseOneFasta(input);
-    try std.testing.expectEqualStrings("Rosalind_1", output.label);
-    try std.testing.expectEqualStrings("ATCCAGCT", output.seq_slice);
-}
-
-test "parse one fasta; iterate sequence w whitespace" {
-    const input = ">Rosalind_1\nA\nT\n";
-    const output = try parseOneFasta(input);
-    try std.testing.expectEqualStrings(output.label, "Rosalind_1");
-    try std.testing.expectEqualStrings(output.seq_slice, "A\nT\n");
-
-    var seq = output.sequence();
-    try std.testing.expectEqual(seq.next().?, 'A');
-    try std.testing.expectEqual(seq.next().?, 'T');
-    try std.testing.expectEqual(seq.next(), null);
-}
-
-test "parse one fasta in reverse; iterate sequence w whitespace" {
-    // Ending w/ whitespace
+    const alloc = std.testing.allocator;
     {
-        const input = ">Rosalind_1\nA\nT\n";
-        const output = try parseOneFasta(input);
-        try std.testing.expectEqualStrings(output.label, "Rosalind_1");
-        try std.testing.expectEqualStrings(output.seq_slice, "A\nT\n");
+        const input = ">Rosalind_1\nATCCAGCT";
+        const output = try parseOneFastaDna(input, alloc);
+        defer {
+            alloc.free(output.fasta.label);
+            alloc.free(output.fasta.seq);
+        }
+        try std.testing.expectEqualStrings("Rosalind_1", output.fasta.label);
+        try std.testing.expectEqual(output.bytes_read, 20);
 
-        var rev_seq = output.reverse_sequence();
-        try std.testing.expectEqual(rev_seq.next().?, 'T');
-        try std.testing.expectEqual(rev_seq.next().?, 'A');
-        try std.testing.expectEqual(rev_seq.next(), null);
+        try std.testing.expectEqualSlices(Nuc, &[_]Nuc{
+            .A,
+            .T,
+            .C,
+            .C,
+            .A,
+            .G,
+            .C,
+            .T,
+        }, output.fasta.seq);
     }
 
-    // Ending w/ nucleotide
     {
-        const input = ">Rosalind_1\nA\nT\nG";
-        const output = try parseOneFasta(input);
-        try std.testing.expectEqualStrings(output.label, "Rosalind_1");
-        try std.testing.expectEqualStrings(output.seq_slice, "A\nT\nG");
-
-        var rev_seq = output.reverse_sequence();
-        try std.testing.expectEqual(rev_seq.next().?, 'G');
-        try std.testing.expectEqual(rev_seq.next().?, 'T');
-        try std.testing.expectEqual(rev_seq.next().?, 'A');
-        try std.testing.expectEqual(rev_seq.next(), null);
+        const input = ">Rosalind_1\nA\nT\n";
+        const output = try parseOneFastaDna(input, alloc);
+        defer {
+            alloc.free(output.fasta.label);
+            alloc.free(output.fasta.seq);
+        }
+        try std.testing.expectEqualStrings("Rosalind_1", output.fasta.label);
+        try std.testing.expectEqual(output.bytes_read, 16);
+        try std.testing.expectEqualSlices(Nuc, &[_]Nuc{ .A, .T }, output.fasta.seq);
     }
 }
