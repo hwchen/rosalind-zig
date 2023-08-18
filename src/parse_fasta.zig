@@ -14,13 +14,13 @@ pub const Nuc = enum(u8) {
 
 // caller frees
 pub fn parseFastaCollectionDna(input: []const u8, alloc: Allocator) ![]FastaDna {
-    var collection = ArrayList.init(FastaDna, alloc);
+    var collection = ArrayList(FastaDna).init(alloc);
 
-    var i = 0;
+    var i: u64 = 0;
     var input_tail = input;
 
     while (true) {
-        const fasta_res = try parseOneFastaDna(input_tail);
+        const fasta_res = try parseOneFastaDna(input_tail, alloc);
         try collection.append(fasta_res.fasta);
 
         i += fasta_res.bytes_read;
@@ -104,16 +104,7 @@ test "parse one fasta" {
         try std.testing.expectEqualStrings("Rosalind_1", output.fasta.label);
         try std.testing.expectEqual(output.bytes_read, 20);
 
-        try std.testing.expectEqualSlices(Nuc, &[_]Nuc{
-            .A,
-            .T,
-            .C,
-            .C,
-            .A,
-            .G,
-            .C,
-            .T,
-        }, output.fasta.seq);
+        try std.testing.expectEqualSlices(Nuc, &[_]Nuc{ .A, .T, .C, .C, .A, .G, .C, .T }, output.fasta.seq);
     }
 
     {
@@ -127,4 +118,23 @@ test "parse one fasta" {
         try std.testing.expectEqual(output.bytes_read, 16);
         try std.testing.expectEqualSlices(Nuc, &[_]Nuc{ .A, .T }, output.fasta.seq);
     }
+}
+
+test "parse fasta collection" {
+    const alloc = std.testing.allocator;
+    const input = ">Rosalind_1\nATCCAGCT\n>Rosalind_2\nA\nT\n";
+    const collection = try parseFastaCollectionDna(input, alloc);
+    defer {
+        for (collection) |record| {
+            alloc.free(record.label);
+            alloc.free(record.seq);
+        }
+        alloc.free(collection);
+    }
+
+    try std.testing.expectEqualStrings("Rosalind_1", collection[0].label);
+    try std.testing.expectEqualSlices(Nuc, &[_]Nuc{ .A, .T, .C, .C, .A, .G, .C, .T }, collection[0].seq);
+
+    try std.testing.expectEqualStrings("Rosalind_2", collection[1].label);
+    try std.testing.expectEqualSlices(Nuc, &[_]Nuc{ .A, .T }, collection[1].seq);
 }
