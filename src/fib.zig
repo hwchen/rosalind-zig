@@ -4,7 +4,7 @@
 // n is generations
 
 const std = @import("std");
-const data = @embedFile("../input/fib.txt");
+const data = @embedFile("./input/fib.txt");
 
 pub fn main() anyerror!void {
     var tokens = std.mem.tokenize(u8, data, " \r\n");

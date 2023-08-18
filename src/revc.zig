@@ -1,7 +1,7 @@
 // complement DNA strand
 
 const std = @import("std");
-const data = @embedFile("../input/revc.txt");
+const data = @embedFile("./input/revc.txt");
 
 pub fn main() anyerror!void {
     // reverse iterator and then complement

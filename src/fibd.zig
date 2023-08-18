@@ -10,7 +10,7 @@
 // several places.
 
 const std = @import("std");
-const data = @embedFile("../input/fibd.txt");
+const data = @embedFile("./input/fibd.txt");
 
 pub fn main() anyerror!void {
     const init = comptime blk: {

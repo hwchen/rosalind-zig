@@ -1,7 +1,7 @@
 // Mendelian Inheritance Probabilities
 
 const std = @import("std");
-const data = @embedFile("../input/iprb.txt");
+const data = @embedFile("./input/iprb.txt");
 
 const Population = struct {
     hom_dom: usize = 0,
@@ -11,9 +11,9 @@ const Population = struct {
     const Self = @This();
 
     fn dom_allele_prob(self: Self) f64 {
-        const a = @intToFloat(f64, self.hom_dom);
-        const b = @intToFloat(f64, self.het);
-        const c = @intToFloat(f64, self.hom_rec);
+        const a = @as(f64, @floatFromInt(self.hom_dom));
+        const b = @as(f64, @floatFromInt(self.het));
+        const c = @as(f64, @floatFromInt(self.hom_rec));
         const t = a + b + c;
 
         // (prb of dominant allele in pairing)

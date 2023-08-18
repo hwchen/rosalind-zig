@@ -1,7 +1,7 @@
 // Transcribe dna to rna
 
 const std = @import("std");
-const data = @embedFile("../input/rna.txt");
+const data = @embedFile("./input/rna.txt");
 
 pub fn main() anyerror!void {
     for (data) |c| {

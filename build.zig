@@ -14,7 +14,7 @@ pub fn build(b: *std.build.Builder) void {
 
     // Standard release options allow the person running `zig build` to select
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
-    const mode = b.standardReleaseOptions();
+    const optimize = b.standardOptimizeOption(.{});
 
     const problems = [_][]const u8{
         "ini",
@@ -32,12 +32,15 @@ pub fn build(b: *std.build.Builder) void {
     };
 
     inline for (problems) |problem| {
-        const exe = b.addExecutable(problem, "src/" ++ problem ++ ".zig");
-        exe.setTarget(target);
-        exe.setBuildMode(mode);
-        exe.install();
+        const exe = b.addExecutable(.{
+            .name = problem,
+            .root_source_file = .{ .path = "src/" ++ problem ++ ".zig" },
+            .target = target,
+            .optimize = optimize,
+        });
+        b.installArtifact(exe);
 
-        const run_cmd = exe.run();
+        const run_cmd = b.addRunArtifact(exe);
         run_cmd.step.dependOn(b.getInstallStep());
         if (b.args) |args| {
             run_cmd.addArgs(args);

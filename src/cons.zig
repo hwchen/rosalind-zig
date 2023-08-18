@@ -4,7 +4,7 @@ const std = @import("std");
 const mem = std.mem;
 const util = @import("./util.zig");
 const FastaCollection = util.FastaCollection;
-const data = @embedFile("../input/cons.txt");
+const data = @embedFile("./input/cons.txt");
 
 pub fn main() anyerror!void {
     var consensus = comptime blk: {
@@ -74,7 +74,7 @@ fn Consensus(comptime N: comptime_int) type {
 fn indexOfMax(xs: []u8) usize {
     var res: usize = 0;
     var max: u8 = 0;
-    for (xs) |x, i| {
+    for (xs, 0..) |x, i| {
         if (x > max) {
             res = i;
             max = x;

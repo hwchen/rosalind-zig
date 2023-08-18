@@ -1,7 +1,7 @@
 // Count dna in a string
 
 const std = @import("std");
-const data = @embedFile("../input/dna.txt");
+const data = @embedFile("./input/dna.txt");
 
 const Counts = struct {
     a: u64 = 0,

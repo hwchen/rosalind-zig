@@ -1,5 +1,5 @@
 const std = @import("std");
-const data = @embedFile("../input/ini.txt");
+const data = @embedFile("./input/ini.txt");
 
 pub fn main() anyerror!void {
     var counts = Counts{};

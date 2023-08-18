@@ -2,7 +2,7 @@
 
 const std = @import("std");
 const ArrayList = std.ArrayList;
-const data = @embedFile("../input/gc.txt");
+const data = @embedFile("./input/gc.txt");
 
 pub fn main() anyerror!void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -49,7 +49,7 @@ const DnaString = struct {
             }
         }
 
-        return 100 * @intToFloat(f32, gc_count) / @intToFloat(f32, total);
+        return 100 * @as(f32, @floatFromInt(gc_count)) / @as(f32, @floatFromInt(total));
     }
 };
 

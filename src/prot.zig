@@ -1,7 +1,7 @@
 // Translating RNA into protein
 
 const std = @import("std");
-const data = @embedFile("../input/prot.txt");
+const data = @embedFile("./input/prot.txt");
 
 pub fn main() anyerror!void {
     var i: usize = 0;

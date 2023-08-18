@@ -3,7 +3,7 @@
 // (Naive exact match)
 
 const std = @import("std");
-const data = @embedFile("../input/subs.txt");
+const data = @embedFile("./input/subs.txt");
 
 pub fn main() anyerror!void {
     var tokens = std.mem.tokenize(u8, data, " \n");
