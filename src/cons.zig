@@ -3,31 +3,29 @@
 const std = @import("std");
 const mem = std.mem;
 const parse_fasta = @import("parse_fasta.zig");
-const FastaCollection = parse_fasta.FastaCollection;
 const data = @embedFile("./input/cons.txt");
 
 pub fn main() anyerror!void {
-    var consensus = comptime blk: {
-        @setEvalBranchQuota(100000);
-        var fasta_collection_prime = FastaCollection.from_str(data);
-        const fasta_prime = (try fasta_collection_prime.next()) orelse return error.NoFasta;
-        const seq_len = fasta_prime.seq_len();
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
 
+    var consensus = comptime blk: {
+        @setEvalBranchQuota(10000);
+        var seq_len = try parse_fasta.parseOneFastaSeqLength(data);
         break :blk Consensus(seq_len){};
     };
 
-    var fasta_collection = FastaCollection.from_str(data);
-    while (try fasta_collection.next()) |*fasta| {
+    const fasta_collection = try parse_fasta.parseFastaCollectionDna(data, alloc);
+    for (fasta_collection) |fasta| {
         std.debug.print("processing: {s}\n", .{fasta.label});
-        var seq = fasta.sequence();
         var seq_idx: usize = 0;
-        while (seq.next()) |n| {
+        for (fasta.seq) |n| {
             switch (n) {
-                'A' => consensus.a[seq_idx] += 1,
-                'C' => consensus.c[seq_idx] += 1,
-                'G' => consensus.g[seq_idx] += 1,
-                'T' => consensus.t[seq_idx] += 1,
-                else => unreachable,
+                .A => consensus.a[seq_idx] += 1,
+                .C => consensus.c[seq_idx] += 1,
+                .G => consensus.g[seq_idx] += 1,
+                .T => consensus.t[seq_idx] += 1,
             }
             seq_idx += 1;
         }

@@ -74,6 +74,27 @@ pub fn parseOneFastaDna(input: []const u8, alloc: Allocator) !struct { fasta: Fa
     };
 }
 
+pub fn parseOneFastaSeqLength(input: []const u8) !u64 {
+    if (input.len <= 1) {
+        return error.IncompleteInput;
+    }
+    if (input[0] != '>') {
+        return error.IncorrectInitialCharacter;
+    }
+
+    const label_end = mem.indexOf(u8, input, "\n") orelse return error.NoSequenceOnlyLabel;
+
+    var seq_len: u64 = 0;
+    for (input[label_end + 1 ..]) |c| {
+        switch (c) {
+            'A', 'T', 'C', 'G' => seq_len += 1,
+            '>' => break,
+            else => {},
+        }
+    }
+    return seq_len;
+}
+
 test "parse empty" {
     const alloc = std.testing.allocator;
     const input = "";
