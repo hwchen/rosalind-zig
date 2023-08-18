@@ -2,8 +2,8 @@
 
 const std = @import("std");
 const mem = std.mem;
-const util = @import("./util.zig");
-const FastaCollection = util.FastaCollection;
+const parse_fasta = @import("parse_fasta.zig");
+const FastaCollection = parse_fasta.FastaCollection;
 const data = @embedFile("./input/cons.txt");
 
 pub fn main() anyerror!void {

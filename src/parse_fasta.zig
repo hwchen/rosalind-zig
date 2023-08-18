@@ -30,13 +30,13 @@ pub const FastaCollection = struct {
         const end = if (mem.indexOf(u8, self.slice[self.idx + 1 ..], ">")) |i| self.idx + i + 1 else self.slice.len;
         const fasta_slice = self.slice[self.idx..end];
         self.idx = end;
-        return parse_one_fasta(fasta_slice) catch |err| err;
+        return parseOneFasta(fasta_slice) catch |err| err;
     }
 };
 
 // Input: one fasta record
 // Output: the Sequence of that record, as an iterator
-pub fn parse_one_fasta(input: []const u8) !Fasta {
+pub fn parseOneFasta(input: []const u8) !Fasta {
     if (input.len <= 1) {
         return error.IncompleteInput;
     }
@@ -137,29 +137,29 @@ pub const Fasta = struct {
 
 test "parse empty" {
     const input = "";
-    try std.testing.expectError(error.IncompleteInput, parse_one_fasta(input));
+    try std.testing.expectError(error.IncompleteInput, parseOneFasta(input));
 }
 
 test "parse too short" {
     const input = ">";
-    try std.testing.expectError(error.IncompleteInput, parse_one_fasta(input));
+    try std.testing.expectError(error.IncompleteInput, parseOneFasta(input));
 }
 
 test "parse wrong initial character" {
     const input = "<test fasta\nA";
-    try std.testing.expectError(error.IncorrectInitialCharacter, parse_one_fasta(input));
+    try std.testing.expectError(error.IncorrectInitialCharacter, parseOneFasta(input));
 }
 
 test "parse one fasta" {
     const input = ">Rosalind_1\nATCCAGCT";
-    const output = try parse_one_fasta(input);
+    const output = try parseOneFasta(input);
     try std.testing.expectEqualStrings("Rosalind_1", output.label);
     try std.testing.expectEqualStrings("ATCCAGCT", output.seq_slice);
 }
 
 test "parse one fasta; iterate sequence w whitespace" {
     const input = ">Rosalind_1\nA\nT\n";
-    const output = try parse_one_fasta(input);
+    const output = try parseOneFasta(input);
     try std.testing.expectEqualStrings(output.label, "Rosalind_1");
     try std.testing.expectEqualStrings(output.seq_slice, "A\nT\n");
 
@@ -173,7 +173,7 @@ test "parse one fasta in reverse; iterate sequence w whitespace" {
     // Ending w/ whitespace
     {
         const input = ">Rosalind_1\nA\nT\n";
-        const output = try parse_one_fasta(input);
+        const output = try parseOneFasta(input);
         try std.testing.expectEqualStrings(output.label, "Rosalind_1");
         try std.testing.expectEqualStrings(output.seq_slice, "A\nT\n");
 
@@ -186,7 +186,7 @@ test "parse one fasta in reverse; iterate sequence w whitespace" {
     // Ending w/ nucleotide
     {
         const input = ">Rosalind_1\nA\nT\nG";
-        const output = try parse_one_fasta(input);
+        const output = try parseOneFasta(input);
         try std.testing.expectEqualStrings(output.label, "Rosalind_1");
         try std.testing.expectEqualStrings(output.seq_slice, "A\nT\nG");
 

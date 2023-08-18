@@ -1,6 +1,6 @@
 const std = @import("std");
-const util = @import("util.zig");
-const FastaCollection = util.FastaCollection;
+const parse_fasta = @import("parse_fasta.zig");
+const FastaCollection = parse_fasta.FastaCollection;
 const data = @embedFile("./input/grph.txt");
 
 pub fn main() !void {
