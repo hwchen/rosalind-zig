@@ -16,18 +16,16 @@ pub const Nuc = enum(u8) {
 pub fn parseFastaCollectionDna(input: []const u8, alloc: Allocator) ![]FastaDna {
     var collection = ArrayList(FastaDna).init(alloc);
 
-    var i: u64 = 0;
     var input_tail = input;
 
     while (true) {
         const fasta_res = try parseOneFastaDna(input_tail, alloc);
         try collection.append(fasta_res.fasta);
 
-        i += fasta_res.bytes_read;
-        if (i >= input_tail.len) {
+        if (fasta_res.bytes_read >= input_tail.len) {
             break;
         }
-        input_tail = input_tail[i..];
+        input_tail = input_tail[fasta_res.bytes_read..];
     }
 
     return collection.toOwnedSlice();
@@ -138,7 +136,7 @@ test "parse fasta collection" {
     defer arena.deinit();
     const alloc = arena.allocator();
 
-    const input = ">Rosalind_1\nATCCAGCT\n>Rosalind_2\nA\nT\n";
+    const input = ">Rosalind_1\nATCCAGCT\n>Rosalind_2\nA\nT\n>Rosalind_3\nCG";
     const collection = try parseFastaCollectionDna(input, alloc);
 
     try std.testing.expectEqualStrings("Rosalind_1", collection[0].label);
@@ -146,4 +144,13 @@ test "parse fasta collection" {
 
     try std.testing.expectEqualStrings("Rosalind_2", collection[1].label);
     try std.testing.expectEqualSlices(Nuc, &[_]Nuc{ .A, .T }, collection[1].seq);
+
+    try std.testing.expectEqualStrings("Rosalind_3", collection[2].label);
+    try std.testing.expectEqualSlices(Nuc, &[_]Nuc{ .C, .G }, collection[2].seq);
+}
+
+test "parse fasta seq length" {
+    const input = ">Rosalind_1\nATCCAGCT";
+    const output = try parseOneFastaSeqLength(input);
+    try std.testing.expectEqual(output, 8);
 }
