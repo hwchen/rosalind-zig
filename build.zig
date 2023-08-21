@@ -29,6 +29,7 @@ pub fn build(b: *std.build.Builder) void {
         "cons",
         "fibd",
         "grph",
+        "lcsm",
     };
 
     inline for (problems) |problem| {
