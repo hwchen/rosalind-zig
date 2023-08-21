@@ -2,7 +2,7 @@
 
 const std = @import("std");
 const mem = std.mem;
-const parse_fasta = @import("parse_fasta.zig");
+const fasta = @import("fasta.zig");
 const data = @embedFile("./input/cons.txt");
 
 pub fn main() anyerror!void {
@@ -12,15 +12,15 @@ pub fn main() anyerror!void {
 
     var consensus = comptime blk: {
         @setEvalBranchQuota(10000);
-        var seq_len = try parse_fasta.parseOneFastaSeqLength(data);
+        var seq_len = try fasta.parseFastaSeqLength(data);
         break :blk Consensus(seq_len){};
     };
 
-    const fasta_collection = try parse_fasta.parseFastaCollectionDna(data, alloc);
-    for (fasta_collection) |fasta| {
-        std.debug.print("processing: {s}\n", .{fasta.label});
+    const fasta_collection = try fasta.parseCollectionDna(data, alloc);
+    for (fasta_collection) |record| {
+        std.debug.print("processing: {s}\n", .{record.label});
         var seq_idx: usize = 0;
-        for (fasta.seq) |n| {
+        for (record.seq) |n| {
             switch (n) {
                 .A => consensus.a[seq_idx] += 1,
                 .C => consensus.c[seq_idx] += 1,

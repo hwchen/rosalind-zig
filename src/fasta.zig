@@ -13,13 +13,13 @@ pub const Nuc = enum(u8) {
 };
 
 // caller frees
-pub fn parseFastaCollectionDna(input: []const u8, alloc: Allocator) ![]FastaDna {
+pub fn parseCollectionDna(input: []const u8, alloc: Allocator) ![]FastaDna {
     var collection = ArrayList(FastaDna).init(alloc);
 
     var input_tail = input;
 
     while (true) {
-        const fasta_res = try parseOneFastaDna(input_tail, alloc);
+        const fasta_res = try parseFastaDna(input_tail, alloc);
         try collection.append(fasta_res.fasta);
 
         if (fasta_res.bytes_read >= input_tail.len) {
@@ -38,7 +38,7 @@ pub const FastaDna = struct {
 
 // Input: one fasta record
 // Output: label and sequence, caller must free.
-pub fn parseOneFastaDna(input: []const u8, alloc: Allocator) !struct { fasta: FastaDna, bytes_read: u64 } {
+pub fn parseFastaDna(input: []const u8, alloc: Allocator) !struct { fasta: FastaDna, bytes_read: u64 } {
     if (input.len <= 1) {
         return error.IncompleteInput;
     }
@@ -72,7 +72,7 @@ pub fn parseOneFastaDna(input: []const u8, alloc: Allocator) !struct { fasta: Fa
     };
 }
 
-pub fn parseOneFastaSeqLength(input: []const u8) !u64 {
+pub fn parseFastaSeqLength(input: []const u8) !u64 {
     if (input.len <= 1) {
         return error.IncompleteInput;
     }
@@ -96,19 +96,19 @@ pub fn parseOneFastaSeqLength(input: []const u8) !u64 {
 test "parse empty" {
     const alloc = std.testing.allocator;
     const input = "";
-    try std.testing.expectError(error.IncompleteInput, parseOneFastaDna(input, alloc));
+    try std.testing.expectError(error.IncompleteInput, parseFastaDna(input, alloc));
 }
 
 test "parse too short" {
     const alloc = std.testing.allocator;
     const input = ">";
-    try std.testing.expectError(error.IncompleteInput, parseOneFastaDna(input, alloc));
+    try std.testing.expectError(error.IncompleteInput, parseFastaDna(input, alloc));
 }
 
 test "parse wrong initial character" {
     const alloc = std.testing.allocator;
     const input = "<test fasta\nA";
-    try std.testing.expectError(error.IncorrectInitialCharacter, parseOneFastaDna(input, alloc));
+    try std.testing.expectError(error.IncorrectInitialCharacter, parseFastaDna(input, alloc));
 }
 
 test "parse one fasta" {
@@ -118,14 +118,14 @@ test "parse one fasta" {
 
     {
         const input = ">Rosalind_1\nATCCAGCT";
-        const output = try parseOneFastaDna(input, alloc);
+        const output = try parseFastaDna(input, alloc);
         try std.testing.expectEqualStrings("Rosalind_1", output.fasta.label);
         try std.testing.expectEqualSlices(Nuc, &[_]Nuc{ .A, .T, .C, .C, .A, .G, .C, .T }, output.fasta.seq);
     }
 
     {
         const input = ">Rosalind_1\nA\nT\n";
-        const output = try parseOneFastaDna(input, alloc);
+        const output = try parseFastaDna(input, alloc);
         try std.testing.expectEqualStrings("Rosalind_1", output.fasta.label);
         try std.testing.expectEqualSlices(Nuc, &[_]Nuc{ .A, .T }, output.fasta.seq);
     }
@@ -137,7 +137,7 @@ test "parse fasta collection" {
     const alloc = arena.allocator();
 
     const input = ">Rosalind_1\nATCCAGCT\n>Rosalind_2\nA\nT\n>Rosalind_3\nCG";
-    const collection = try parseFastaCollectionDna(input, alloc);
+    const collection = try parseCollectionDna(input, alloc);
 
     try std.testing.expectEqualStrings("Rosalind_1", collection[0].label);
     try std.testing.expectEqualSlices(Nuc, &[_]Nuc{ .A, .T, .C, .C, .A, .G, .C, .T }, collection[0].seq);
@@ -151,6 +151,6 @@ test "parse fasta collection" {
 
 test "parse fasta seq length" {
     const input = ">Rosalind_1\nATCCAGCT";
-    const output = try parseOneFastaSeqLength(input);
+    const output = try parseFastaSeqLength(input);
     try std.testing.expectEqual(output, 8);
 }
