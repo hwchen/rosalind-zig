@@ -31,7 +31,7 @@ pub fn main() anyerror!void {
         }
     }
 
-    consensus.printConsensusString();
+    try consensus.printConsensusString();
 }
 
 fn Consensus(comptime N: comptime_int) type {
@@ -45,7 +45,11 @@ fn Consensus(comptime N: comptime_int) type {
 
         const Self = @This();
 
-        pub fn printConsensusString(self: Self) void {
+        pub fn printConsensusString(self: Self) !void {
+            const stdout = std.io.getStdOut().writer();
+            var buf_stdout = std.io.bufferedWriter(stdout);
+            const wtr = buf_stdout.writer();
+
             var acgt: [4]u8 = undefined;
             var i: usize = 0;
             while (i < N) : (i += 1) {
@@ -56,15 +60,16 @@ fn Consensus(comptime N: comptime_int) type {
 
                 const acgt_idx = indexOfMax(&acgt);
                 if (acgt_idx == 0) {
-                    std.debug.print("A", .{});
+                    _ = try wtr.write("A");
                 } else if (acgt_idx == 1) {
-                    std.debug.print("C", .{});
+                    _ = try wtr.write("C");
                 } else if (acgt_idx == 2) {
-                    std.debug.print("G", .{});
+                    _ = try wtr.write("G");
                 } else if (acgt_idx == 3) {
-                    std.debug.print("T", .{});
+                    _ = try wtr.write("T");
                 }
             }
+            try buf_stdout.flush();
         }
     };
 }
